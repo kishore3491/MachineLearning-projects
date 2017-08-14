@@ -1,8 +1,3 @@
-# Goal:
-# Read Cifar-10 Binary input files,
-# and convert them to TF processable feeds.
-
-
 import os
 from six.moves import xrange
 import tensorflow as tf
@@ -10,8 +5,9 @@ import tensorflow as tf
 
 # CIFAR-10 global constants
 NUM_CLASSES = 10
-IMAGE_SIZE = 32
-IMAGE_CHANNELS = 3
+IMG_HEIGHT = 32
+IMG_WIDTH = 32
+IMG_CHANNELS = 3
 LABEL_BYTES = 1
 NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN = 50000
 NUM_EXAMPLES_PER_EPOCH_FOR_EVAL = 10000
@@ -21,13 +17,13 @@ class ImageRecord(object):
 
 
 def read_data(filename_queue):
-    images_bytes = IMAGE_SIZE * IMAGE_SIZE * IMAGE_CHANNELS
+    images_bytes = IMG_HEIGHT * IMG_WIDTH * IMG_CHANNELS
     # Compute how many bytes to read per image.
     record_bytes = images_bytes + LABEL_BYTES
 
     record = ImageRecord()
-    record.height = IMAGE_SIZE
-    record.width = IMAGE_SIZE
+    record.height = IMG_HEIGHT
+    record.width = IMG_WIDTH
     record.channels = IMAGE_CHANNELS
 
     # Read a record, getting filenames from filename_queue.
@@ -90,11 +86,11 @@ def _generate_image_label_batch(image_op, label_op, min_queue_examples, batch_si
     return image_batch_op, tf.reshape(label_batch_op, [batch_size])
 
 
-def get_filenames_queue(is_train=True, data_dir):
+def get_filenames_queue(data_dir, is_train, epochs=1):
     # Step 1: Read filenames from data directory.
     if is_train:
         filenames = [os.path.join(data_dir, 'data_batch_%d.bin' % i)
-                for i in xrange(1,6)
+                for i in xrange(1,1)
             ]
     else:
         filenames = [os.path.join(data_dir, 'test_batch.bin')]
@@ -105,10 +101,11 @@ def get_filenames_queue(is_train=True, data_dir):
             raise ValueError("Failed to find file: " + f)
 
     # Step 3: Create a queue that produces the filenames to read & return
+    # TODO num_epochs
     return tf.train.string_input_producer(filenames)
 
 
-def get_data_batch(filename_queue, batch_size):
+def get_data_batch(filename_queue, batch_size, is_train):
     # Step 1: Read examples from files in the filename queue.
     read_input = read_data(filename_queue)
     recasted_image = tf.cast(read_input.uint8image, tf.float32)
@@ -124,14 +121,19 @@ def get_data_batch(filename_queue, batch_size):
     float_image = tf.image.per_image_standardization(recasted_image)
 
     # Step 4: Set the shapes of tensors.
-    float_image.set_shape([IMAGE_SIZE, IMAGE_SIZE, 3])
+    float_image.set_shape([IMG_HEIGHT, IMG_WIDTH, 3])
     read_input.label.set_shape([1])
 
+    # Step 5: Calculate queue size for train/eval.
     min_fraction_of_examples_in_queue = 0.4
-    min_queue_examples = int(num_examples_per_epoch *
+    if is_train:
+        min_queue_examples = int(NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN *
+                            min_fraction_of_examples_in_queue)
+    else:
+        min_queue_examples = int(NUM_EXAMPLES_PER_EPOCH_FOR_EVAL *
                             min_fraction_of_examples_in_queue)
 
-    # Step 5: Generate a batch of images and labels by building
+    # Step 6: Generate a batch of images and labels by building
     # up a queue of examples.
     return _generate_image_label_batch(
         float_image,
