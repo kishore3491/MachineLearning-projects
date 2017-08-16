@@ -15,23 +15,24 @@ def main(_):
 
     model = Model(
                 data_dir=FLAGS.data_dir,
+                log_dir=FLAGS.log_dir,
                 batch_size=FLAGS.batch_size,
                 epochs=FLAGS.epochs
             )
     model.train()
-    model.eval()
+    # model.eval()
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--run_dir", default="/tmp/CIFAR10_train")
+    parser.add_argument("--run_dir", default="/tmp/tf/CIFAR10_train")
     parser.add_argument("--batch_size", type=int, default=100)
     parser.add_argument("--epochs", type=int, default=1)
     parser.add_argument(
         "--data_dir",
         type=str,
-        default="/home/kbanala/Work/DataScience/DataSets/CIFAR10",
+        default="/home/kbanala/Work/DataScience/DataSets/CIFAR10/cifar-10-batches-py",
         help='directory for datasets.')
     parser.add_argument(
         '--log_dir',

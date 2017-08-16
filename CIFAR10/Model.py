@@ -5,49 +5,67 @@ import InputHandler as inputHandler
 class Model(object):
     def __init__(self,
         data_dir,
+        log_dir,
         batch_size,
         epochs
             ):
         self.__data_dir__ = data_dir
+        self.__log_dir__ = log_dir
         self.__batch_size__ = batch_size
         self.__epochs__ = epochs
 
     def train(self):
-        logits, labels = self._inference()
         with tf.name_scope("training"):
+            X,y = self._placeholders()
+            logits = self._inference(X)
             Xentropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
                 logits=logits,
-                labels=labels
+                labels=y
             )
             loss = tf.reduce_mean(Xentropy)
+
+            # Add this to TensorBoard
+            tf.summary.scalar('loss', loss)
+
             optimizer = tf.train.AdamOptimizer()
             train_op = optimizer.minimize(loss)
-
-        init = tf.global_variables_initializer()
 
         filename_queue = inputHandler.get_filenames_queue(
             data_dir=self.__data_dir__,
             epochs=self.__epochs__,
             is_train=True)
-        image_batch_op, label_batch_op = inputHandler.get_data_batch(
+
+        with tf.device('/cpu:0'):
+            image_batch_op, label_batch_op = inputHandler.get_data_batch(
                                             filename_queue,
                                             batch_size=self.__batch_size__,
                                             is_train=True)
 
+        merged = tf.summary.merge_all()
+        train_writer = tf.summary.FileWriter(self.__log_dir__ + '/train', tf.get_default_graph())
+
+        init = tf.group(tf.global_variables_initializer(),
+                   tf.local_variables_initializer())
         with tf.Session() as sess:
             sess.run(init)
             coord = tf.train.Coordinator()
             threads = tf.train.start_queue_runners(coord=coord)
             while not coord.should_stop():
                 image_batch, label_batch = sess.run([image_batch_op, label_batch_op])
-                sess.run(train_op,
+                summary, _ = sess.run([merged, train_op],
                     feed_dict={
                         X: image_batch,
                         y: label_batch
                     }
                 )
+                train_writer.add_summary(summary, i)
+            train_writer.close()
             coord.request_stop()
             coord.join(threads)
+
+        # with tf.Session() as sess:
+        #     train_writer = tf.summary.FileWriter(self.__log_dir__ + '/train', sess.graph)
+        #     train_writer.close()
 
     def eval(self):
         logits, labels = self._inference()
@@ -61,7 +79,8 @@ class Model(object):
         filename_queue = inputHandler.get_filenames_queue(
                                             data_dir=self.__data_dir__,
                                             is_train=False)
-        image_batch_op, label_batch_op = inputHandler.get_data_batch(
+        with tf.device('/cpu:0'):
+            image_batch_op, label_batch_op = inputHandler.get_data_batch(
                                                 filename_queue,
                                                 batch_size=self.__batch_size__,
                                                 is_train=False)
@@ -82,7 +101,7 @@ class Model(object):
             coord.request_stop()
             coord.join(threads)
 
-    def _inference(self):
+    def _placeholders(self):
         with tf.name_scope("inputs"):
             X = tf.placeholder(
                 tf.float32,
@@ -100,7 +119,9 @@ class Model(object):
                 shape=[None],
                 name="y"
             )
+        return X,y
 
+    def _inference(self, X):
         with tf.name_scope("conv1"):
             conv1 = tf.layers.conv2d(
                 inputs=X,
@@ -137,7 +158,7 @@ class Model(object):
                 units=10,
                 activation=tf.nn.relu
             )
-        return logits, y
+        return logits
 
     def save(self):
         with tf.name_scope("init_and_save"):

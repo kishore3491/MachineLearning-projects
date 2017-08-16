@@ -24,7 +24,7 @@ def read_data(filename_queue):
     record = ImageRecord()
     record.height = IMG_HEIGHT
     record.width = IMG_WIDTH
-    record.channels = IMAGE_CHANNELS
+    record.channels = IMG_CHANNELS
 
     # Read a record, getting filenames from filename_queue.
     reader = tf.FixedLengthRecordReader(
@@ -89,11 +89,11 @@ def _generate_image_label_batch(image_op, label_op, min_queue_examples, batch_si
 def get_filenames_queue(data_dir, is_train, epochs=1):
     # Step 1: Read filenames from data directory.
     if is_train:
-        filenames = [os.path.join(data_dir, 'data_batch_%d.bin' % i)
-                for i in xrange(1,1)
+        filenames = [os.path.join(data_dir, 'data_batch_%d' % i)
+                for i in xrange(1,2)
             ]
     else:
-        filenames = [os.path.join(data_dir, 'test_batch.bin')]
+        filenames = [os.path.join(data_dir, 'test_batch')]
 
     # Step 2: Check if files exits
     for f in filenames:
@@ -101,8 +101,7 @@ def get_filenames_queue(data_dir, is_train, epochs=1):
             raise ValueError("Failed to find file: " + f)
 
     # Step 3: Create a queue that produces the filenames to read & return
-    # TODO num_epochs
-    return tf.train.string_input_producer(filenames)
+    return tf.train.string_input_producer(filenames, num_epochs=epochs)
 
 
 def get_data_batch(filename_queue, batch_size, is_train):
