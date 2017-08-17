@@ -20,7 +20,7 @@ def main(_):
                 epochs=FLAGS.epochs
             )
     model.train()
-    # model.eval()
+    model.eval()
 
 
 if __name__ == '__main__':

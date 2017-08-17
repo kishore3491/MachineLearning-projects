@@ -1,3 +1,4 @@
+import os
 import tensorflow as tf
 
 import InputHandler as inputHandler
@@ -13,91 +14,123 @@ class Model(object):
         self.__log_dir__ = log_dir
         self.__batch_size__ = batch_size
         self.__epochs__ = epochs
+        self.graph = tf.Graph()
+        self.saver = None
 
     def train(self):
-        with tf.name_scope("training"):
-            X,y = self._placeholders()
-            logits = self._inference(X)
-            Xentropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
-                logits=logits,
-                labels=y
-            )
-            loss = tf.reduce_mean(Xentropy)
-
-            # Add this to TensorBoard
-            tf.summary.scalar('loss', loss)
-
-            optimizer = tf.train.AdamOptimizer()
-            train_op = optimizer.minimize(loss)
-
-        filename_queue = inputHandler.get_filenames_queue(
-            data_dir=self.__data_dir__,
-            epochs=self.__epochs__,
-            is_train=True)
-
-        with tf.device('/cpu:0'):
-            image_batch_op, label_batch_op = inputHandler.get_data_batch(
-                                            filename_queue,
-                                            batch_size=self.__batch_size__,
-                                            is_train=True)
-
-        merged = tf.summary.merge_all()
-        train_writer = tf.summary.FileWriter(self.__log_dir__ + '/train', tf.get_default_graph())
-
-        init = tf.group(tf.global_variables_initializer(),
-                   tf.local_variables_initializer())
-        with tf.Session() as sess:
-            sess.run(init)
-            coord = tf.train.Coordinator()
-            threads = tf.train.start_queue_runners(coord=coord)
-            while not coord.should_stop():
-                image_batch, label_batch = sess.run([image_batch_op, label_batch_op])
-                summary, _ = sess.run([merged, train_op],
-                    feed_dict={
-                        X: image_batch,
-                        y: label_batch
-                    }
+        with self.graph.as_default():
+            with tf.name_scope("training"):
+                X,y = self._placeholders()
+                logits = self._inference(X)
+                Xentropy = tf.nn.sparse_softmax_cross_entropy_with_logits(
+                    logits=logits,
+                    labels=y
                 )
-                train_writer.add_summary(summary, i)
-            train_writer.close()
-            coord.request_stop()
-            coord.join(threads)
+                loss = tf.reduce_mean(Xentropy)
 
-        # with tf.Session() as sess:
-        #     train_writer = tf.summary.FileWriter(self.__log_dir__ + '/train', sess.graph)
-        #     train_writer.close()
+                # Add this to TensorBoard
+                tf.summary.scalar('loss', loss)
 
-    def eval(self):
-        logits, labels = self._inference()
-        with tf.name_scope("eval"):
-            correct = tf.nn.in_top_k(logits, labels, 5)
-            accuracy = tf.reduce_mean(tf.cast(
-                correct,
-                tf.float32
-            ))
+                optimizer = tf.train.AdamOptimizer()
+                train_op = optimizer.minimize(loss)
 
-        filename_queue = inputHandler.get_filenames_queue(
-                                            data_dir=self.__data_dir__,
-                                            is_train=False)
-        with tf.device('/cpu:0'):
-            image_batch_op, label_batch_op = inputHandler.get_data_batch(
+            filename_queue = inputHandler.get_filenames_queue(
+                data_dir=self.__data_dir__,
+                epochs=self.__epochs__,
+                is_train=True)
+
+            with tf.device('/cpu:0'):
+                image_batch_op, label_batch_op = inputHandler.get_data_batch(
                                                 filename_queue,
                                                 batch_size=self.__batch_size__,
-                                                is_train=False)
+                                                is_train=True)
 
-        init = tf.global_variables_initializer()
-        with tf.Session() as sess:
-            sess.run(init)
+            merged = tf.summary.merge_all()
+            train_writer = tf.summary.FileWriter(self.__log_dir__ + '/train', tf.get_default_graph())
+
+            init = tf.group(tf.global_variables_initializer(),
+                       tf.local_variables_initializer())
+            with tf.Session(graph=self.graph) as sess:
+                sess.run(init)
+                coord = tf.train.Coordinator()
+                threads = tf.train.start_queue_runners(coord=coord)
+                try:
+                    while not coord.should_stop():
+                        image_batch, label_batch = sess.run([image_batch_op, label_batch_op])
+                        summary, _ = sess.run([merged, train_op],
+                            feed_dict={
+                                X: image_batch,
+                                y: label_batch
+                            }
+                        )
+                        train_writer.add_summary(summary)
+                        # print("Loss: " + loss.eval())
+                except tf.errors.OutOfRangeError:
+                    print('Done training -- epoch limit reached')
+                train_writer.close()
+                coord.request_stop()
+                coord.join(threads)
+
+                checkpoint_file = os.path.join(self.__log_dir__, 'model.ckpt')
+                saver = tf.train.Saver()
+                saver.save(sess, checkpoint_file)
+                self.saver = saver
+
+    def eval(self):
+        if self.saver is None:
+            print('No saver found, ensure model is trained before running eval.')
+            return
+        with tf.Session(graph=self.graph) as sess:
+            ckpt = tf.train.get_checkpoint_state(self.__log_dir__)
+            if ckpt and ckpt.model_checkpoint_path:
+                # Restores from checkpoint
+                self.saver.restore(sess, ckpt.model_checkpoint_path)
+            else:
+                print('No checkpoint file found')
+                return
+
+            with tf.name_scope("eval"):
+                X,y = self._placeholders()
+                logits = self._inference(X)
+                correct = tf.nn.in_top_k(logits, y, 5)
+                accuracy = tf.reduce_mean(tf.cast(
+                    correct,
+                    tf.float32
+                ))
+                # Add this to TensorBoard
+                tf.summary.scalar('accuracy', accuracy)
+
+            filename_queue = inputHandler.get_filenames_queue(
+                                                data_dir=self.__data_dir__,
+                                                is_train=False)
+            with tf.device('/cpu:0'):
+                image_batch_op, label_batch_op = inputHandler.get_data_batch(
+                                                    filename_queue,
+                                                    batch_size=self.__batch_size__,
+                                                    is_train=False)
+
+            merged = tf.summary.merge_all()
+            test_writer = tf.summary.FileWriter(self.__log_dir__ + '/test', tf.get_default_graph())
+
+            local_init = tf.group(tf.global_variables_initializer(),
+                       tf.local_variables_initializer())
+            sess.run(local_init)
             coord = tf.train.Coordinator()
             threads = tf.train.start_queue_runners(coord=coord)
-            while not coord.should_stop():
-                image_batch, label_batch = sess.run([image_batch_op, label_batch_op])
-                sess.run(train_op,
-                    feed_dict={
-                        X: image_batch,
-                        y: label_batch
-                    }
-                )
+            try:
+                while not coord.should_stop():
+                    image_batch, label_batch = sess.run([image_batch_op, label_batch_op])
+                    summary, _ = sess.run([merged, accuracy],
+                        feed_dict={
+                            X: image_batch,
+                            y: label_batch
+                        }
+                    )
+                    test_writer.add_summary(summary)
+                    # print("Loss: " + loss.eval())
+            except tf.errors.OutOfRangeError:
+                print('Done training -- epoch limit reached')
+            test_writer.close()
             coord.request_stop()
             coord.join(threads)
 
@@ -141,10 +174,11 @@ class Model(object):
 
         #... more conv layers as needed
 
+        # To flatten, get prev layer's shape, and convert to new shape [None, x]
         with tf.name_scope("flatten"):
             flatten = tf.reshape(
                 pool1,
-                shape=[-1, 7*7*3]
+                shape=[-1, 8*8*3]
             )
 
         with tf.name_scope("fully_connected"):
@@ -159,10 +193,3 @@ class Model(object):
                 activation=tf.nn.relu
             )
         return logits
-
-    def save(self):
-        with tf.name_scope("init_and_save"):
-            init = tf.global_variables_initializer()
-            saver = tf.train.Saver()
-
-        return saver

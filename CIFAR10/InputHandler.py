@@ -69,7 +69,8 @@ def _generate_image_label_batch(image_op, label_op, min_queue_examples, batch_si
             batch_size=batch_size,
             num_threads=num_process_threads,
             capacity=min_queue_examples + 3 * batch_size,
-            min_after_dequeue=min_queue_examples
+            min_after_dequeue=min_queue_examples,
+            allow_smaller_final_batch=True
         )
     else:
         image_batch_op, label_batch_op = tf.train.batch(
