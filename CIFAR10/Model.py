@@ -1,4 +1,5 @@
 import os
+import math
 import tensorflow as tf
 
 import InputHandler as inputHandler
@@ -57,14 +58,14 @@ class Model(object):
                 try:
                     while not coord.should_stop():
                         image_batch, label_batch = sess.run([image_batch_op, label_batch_op])
-                        summary, _ = sess.run([merged, train_op],
+                        summary,_, loss_value = sess.run([merged, train_op, loss],
                             feed_dict={
                                 X: image_batch,
                                 y: label_batch
                             }
                         )
                         train_writer.add_summary(summary)
-                        # print("Loss: " + loss.eval())
+                        print("Loss: ", loss_value)
                 except tf.errors.OutOfRangeError:
                     print('Done training -- epoch limit reached')
                 train_writer.close()
@@ -77,22 +78,11 @@ class Model(object):
                 self.saver = saver
 
     def eval(self):
-        if self.saver is None:
-            print('No saver found, ensure model is trained before running eval.')
-            return
         with tf.Session(graph=self.graph) as sess:
-            ckpt = tf.train.get_checkpoint_state(self.__log_dir__)
-            if ckpt and ckpt.model_checkpoint_path:
-                # Restores from checkpoint
-                self.saver.restore(sess, ckpt.model_checkpoint_path)
-            else:
-                print('No checkpoint file found')
-                return
-
             with tf.name_scope("eval"):
                 X,y = self._placeholders()
                 logits = self._inference(X)
-                correct = tf.nn.in_top_k(logits, y, 5)
+                correct = tf.nn.in_top_k(logits, y, 1)
                 accuracy = tf.reduce_mean(tf.cast(
                     correct,
                     tf.float32
@@ -115,19 +105,34 @@ class Model(object):
             local_init = tf.group(tf.global_variables_initializer(),
                        tf.local_variables_initializer())
             sess.run(local_init)
+
+            if self.saver is None:
+                self.saver = tf.train.Saver()
+            ckpt = tf.train.get_checkpoint_state(self.__log_dir__)
+            if ckpt and ckpt.model_checkpoint_path:
+                # Restores from checkpoint
+                self.saver.restore(sess, ckpt.model_checkpoint_path)
+            else:
+                print('No checkpoint file found')
+                return
+
             coord = tf.train.Coordinator()
             threads = tf.train.start_queue_runners(coord=coord)
+
+            num_iters = int(math.ceil(inputHandler.NUM_EXAMPLES_PER_EPOCH_FOR_EVAL/self.__batch_size__))
+            i = 0
             try:
-                while not coord.should_stop():
+                while (not coord.should_stop()) and (i < num_iters):
                     image_batch, label_batch = sess.run([image_batch_op, label_batch_op])
-                    summary, _ = sess.run([merged, accuracy],
+                    summary,acc = sess.run([merged, accuracy],
                         feed_dict={
                             X: image_batch,
                             y: label_batch
                         }
                     )
-                    test_writer.add_summary(summary)
-                    # print("Loss: " + loss.eval())
+                    i += 1
+                    test_writer.add_summary(summary, i)
+                    print("Accuracy: ", acc)
             except tf.errors.OutOfRangeError:
                 print('Done training -- epoch limit reached')
             test_writer.close()

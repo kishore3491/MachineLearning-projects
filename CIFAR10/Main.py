@@ -9,9 +9,9 @@ def main(_):
     # Clear graph
     tf.reset_default_graph()
     # Delete log directories, if any.
-    if tf.gfile.Exists(FLAGS.log_dir):
-      tf.gfile.DeleteRecursively(FLAGS.log_dir)
-    tf.gfile.MakeDirs(FLAGS.log_dir)
+    # if tf.gfile.Exists(FLAGS.log_dir):
+    #   tf.gfile.DeleteRecursively(FLAGS.log_dir)
+    # tf.gfile.MakeDirs(FLAGS.log_dir)
 
     model = Model(
                 data_dir=FLAGS.data_dir,
@@ -19,7 +19,7 @@ def main(_):
                 batch_size=FLAGS.batch_size,
                 epochs=FLAGS.epochs
             )
-    model.train()
+    # model.train()
     model.eval()
 
 
@@ -32,7 +32,7 @@ if __name__ == '__main__':
     parser.add_argument(
         "--data_dir",
         type=str,
-        default="/home/kbanala/Work/DataScience/DataSets/CIFAR10/cifar-10-batches-py",
+        default="/home/kbanala/Work/DataScience/DataSets/CIFAR10/cifar-10-batches-bin",
         help='directory for datasets.')
     parser.add_argument(
         '--log_dir',

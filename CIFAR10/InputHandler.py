@@ -58,11 +58,17 @@ def read_data(filename_queue):
     return record
 
 
-def _generate_image_label_batch(image_op, label_op, min_queue_examples, batch_size,
-        shuffle):
+def _generate_image_label_batch(
+                image_op,
+                label_op,
+                min_queue_examples,
+                batch_size,
+                shuffle,
+                num_process_threads
+            ):
     # Create a queue that may shuffle examples(?),
     # and then read 'batch_size' images + labels from the example queue.
-    num_process_threads = 16
+
     if shuffle:
         image_batch_op, label_batch_op = tf.train.shuffle_batch(
             [image_op, label_op],
@@ -90,11 +96,11 @@ def _generate_image_label_batch(image_op, label_op, min_queue_examples, batch_si
 def get_filenames_queue(data_dir, is_train, epochs=1):
     # Step 1: Read filenames from data directory.
     if is_train:
-        filenames = [os.path.join(data_dir, 'data_batch_%d' % i)
+        filenames = [os.path.join(data_dir, 'data_batch_%d.bin' % i)
                 for i in xrange(1,2)
             ]
     else:
-        filenames = [os.path.join(data_dir, 'test_batch')]
+        filenames = [os.path.join(data_dir, 'test_batch.bin')]
 
     # Step 2: Check if files exits
     for f in filenames:
@@ -105,7 +111,7 @@ def get_filenames_queue(data_dir, is_train, epochs=1):
     return tf.train.string_input_producer(filenames, num_epochs=epochs)
 
 
-def get_data_batch(filename_queue, batch_size, is_train):
+def get_data_batch(filename_queue, batch_size, is_train, num_process_threads = 16):
     # Step 1: Read examples from files in the filename queue.
     read_input = read_data(filename_queue)
     recasted_image = tf.cast(read_input.uint8image, tf.float32)
@@ -140,5 +146,6 @@ def get_data_batch(filename_queue, batch_size, is_train):
         read_input.label,
         min_queue_examples,
         batch_size,
-        shuffle=False
+        shuffle=False,
+        num_process_threads=num_process_threads
     )
