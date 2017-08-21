@@ -108,10 +108,10 @@ def get_filenames_queue(data_dir, is_train, epochs=1):
             raise ValueError("Failed to find file: " + f)
 
     # Step 3: Create a queue that produces the filenames to read & return
-    return tf.train.string_input_producer(filenames, num_epochs=epochs)
+    return tf.train.string_input_producer(filenames)
 
 
-def get_data_batch(filename_queue, batch_size, is_train, num_process_threads = 16):
+def get_data_batch(filename_queue, batch_size, is_train):
     # Step 1: Read examples from files in the filename queue.
     read_input = read_data(filename_queue)
     recasted_image = tf.cast(read_input.uint8image, tf.float32)
@@ -135,9 +135,11 @@ def get_data_batch(filename_queue, batch_size, is_train, num_process_threads = 1
     if is_train:
         min_queue_examples = int(NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN *
                             min_fraction_of_examples_in_queue)
+        num_process_threads = 8
     else:
         min_queue_examples = int(NUM_EXAMPLES_PER_EPOCH_FOR_EVAL *
                             min_fraction_of_examples_in_queue)
+        num_process_threads = 4
 
     # Step 6: Generate a batch of images and labels by building
     # up a queue of examples.
@@ -149,3 +151,9 @@ def get_data_batch(filename_queue, batch_size, is_train, num_process_threads = 1
         shuffle=False,
         num_process_threads=num_process_threads
     )
+
+def delete_directories(path):
+    # Delete existing directories, if any.
+    if tf.gfile.Exists(path):
+      tf.gfile.DeleteRecursively(path)
+    tf.gfile.MakeDirs(path)
