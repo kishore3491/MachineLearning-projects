@@ -46,9 +46,7 @@ def train():
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(coord=coord)
         steps = int(math.ceil(inputHandler.NUM_EXAMPLES_PER_EPOCH_FOR_TRAIN/FLAGS.batch_size))
-        print("steps: ", steps)
         num_iters = FLAGS.epochs * steps
-        print("iters: ", num_iters)
         i = 0
         try:
             while (not coord.should_stop()) and (i < num_iters):

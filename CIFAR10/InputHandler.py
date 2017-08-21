@@ -97,7 +97,7 @@ def get_filenames_queue(data_dir, is_train, epochs=1):
     # Step 1: Read filenames from data directory.
     if is_train:
         filenames = [os.path.join(data_dir, 'data_batch_%d.bin' % i)
-                for i in xrange(1,2)
+                for i in xrange(1,6)
             ]
     else:
         filenames = [os.path.join(data_dir, 'test_batch.bin')]

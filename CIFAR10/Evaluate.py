@@ -23,13 +23,7 @@ def evaluate():
     with tf.name_scope("eval"):
         X,y = model.placeholders()
         logits = model.inference(X)
-        top_k_op = tf.nn.in_top_k(logits, y, 5)
-        # accuracy = tf.reduce_mean(tf.cast(
-        #     correct,
-        #     tf.float32
-        # ))
-        # Add this to TensorBoard
-        tf.summary.histogram('top_k_op', top_k_op)
+        top_k_op = tf.nn.in_top_k(logits, y, 1)
 
     # 2. filename_queue with eval data
     filename_queue = inputHandler.get_filenames_queue(
@@ -42,13 +36,21 @@ def evaluate():
                                             batch_size=FLAGS.batch_size,
                                             is_train=False)
 
-    merged = tf.summary.merge_all()
-    test_writer = tf.summary.FileWriter(FLAGS.log_dir, tf.get_default_graph())
-
-    init = tf.group(tf.global_variables_initializer(),
-               tf.local_variables_initializer())
+    # merged = tf.summary.merge_all()
+    # test_writer = tf.summary.FileWriter(FLAGS.log_dir, tf.get_default_graph())
 
     with tf.Session() as sess:
+        """
+        Note: Do not init variables again; This will load new set of variables,
+        as if a new training session is being started, ignoring pre-trained
+        weights. Just load variables from checkpoint.
+        The precision value should be same for different runs of this experiment.
+        i.e re-running eval with same checkpoint, data and other values should
+        give same precision value. If a different precision value is returned
+        for each run, most possibly the pre-trained weights are messed up
+        somewhere.
+        """
+        print(sess.run(tf.report_uninitialized_variables()))
         saver = tf.train.Saver()
         ckpt = tf.train.get_checkpoint_state(FLAGS.ckpt_dir)
         if ckpt and ckpt.model_checkpoint_path:
@@ -57,8 +59,7 @@ def evaluate():
         else:
             print('No checkpoint file found')
             return
-
-        sess.run(init)
+        print(sess.run(tf.report_uninitialized_variables()))
 
         coord = tf.train.Coordinator()
         threads = tf.train.start_queue_runners(coord=coord)
@@ -77,7 +78,7 @@ def evaluate():
                     }
                 )
                 i += 1
-                test_writer.add_summary(summary, i)
+                # test_writer.add_summary(summary, i)
                 true_count += np.sum(predictions)
 
         except tf.errors.OutOfRangeError:
@@ -85,7 +86,7 @@ def evaluate():
 
         precision = true_count / inputHandler.NUM_EXAMPLES_PER_EPOCH_FOR_EVAL
         print("Precision: ", precision)
-        test_writer.close()
+        # test_writer.close()
         coord.request_stop()
         coord.join(threads)
         sess.close()

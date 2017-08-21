@@ -22,10 +22,10 @@ def placeholders():
     return X,y
 
 def inference(X):
-    with tf.name_scope("conv1"):
+    with tf.name_scope("convolutions"):
         conv1 = tf.layers.conv2d(
             inputs=X,
-            filters=3,
+            filters=32,
             kernel_size=[3,3],
             strides=[2,2],
             padding="SAME",
@@ -39,23 +39,50 @@ def inference(X):
             strides=2
         )
 
+        conv2 = tf.layers.conv2d(
+            inputs=pool1,
+            filters=64,
+            kernel_size=[3,3],
+            strides=[2,2],
+            padding="SAME",
+            activation=tf.nn.relu
+        )
+
+        # Pooling layer 1
+        pool2 = tf.layers.max_pooling2d(
+            inputs=conv2,
+            pool_size=[2,2],
+            strides=2
+        )
+
+        dropout2 = tf.layers.dropout(
+            inputs=pool2,
+            rate=0.1
+        )
+
+        # print(dropout2.shape)
     #... more conv layers as needed
 
     # To flatten, get prev layer's shape, and convert to new shape [None, x]
     with tf.name_scope("flatten"):
         flatten = tf.reshape(
-            pool1,
-            shape=[-1, 8*8*3]
+            dropout2,
+            shape=[-1, 2*2*64]
         )
 
     with tf.name_scope("fully_connected"):
-        fc = tf.layers.dense(
+        fc1 = tf.layers.dense(
             inputs=flatten,
             units=1024,
             activation=tf.nn.relu
         )
+        fc2 = tf.layers.dense(
+            inputs=fc1,
+            units=192,
+            activation=tf.nn.relu
+        )
         logits = tf.layers.dense(
-            inputs=fc,
+            inputs=fc2,
             units=10,
             activation=tf.nn.relu
         )
