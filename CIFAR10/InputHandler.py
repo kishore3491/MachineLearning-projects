@@ -111,7 +111,7 @@ def get_filenames_queue(data_dir, is_train, epochs=1):
     return tf.train.string_input_producer(filenames)
 
 
-def get_data_batch(filename_queue, batch_size, is_train):
+def get_data_batch(filename_queue, batch_size, is_train, shuffle=False):
     # Step 1: Read examples from files in the filename queue.
     read_input = read_data(filename_queue)
     recasted_image = tf.cast(read_input.uint8image, tf.float32)
@@ -148,7 +148,7 @@ def get_data_batch(filename_queue, batch_size, is_train):
         read_input.label,
         min_queue_examples,
         batch_size,
-        shuffle=False,
+        shuffle=shuffle,
         num_process_threads=num_process_threads
     )
 

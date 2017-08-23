@@ -27,20 +27,13 @@ def inference(X):
             inputs=X,
             filters=32,
             kernel_size=[3,3],
-            strides=[2,2],
+            strides=[1,1],
             padding="SAME",
             activation=tf.nn.relu
         )
 
-        # Pooling layer 1
-        pool1 = tf.layers.max_pooling2d(
-            inputs=conv1,
-            pool_size=[2,2],
-            strides=2
-        )
-
         conv2 = tf.layers.conv2d(
-            inputs=pool1,
+            inputs=conv1,
             filters=64,
             kernel_size=[3,3],
             strides=[2,2],
@@ -57,7 +50,7 @@ def inference(X):
 
         dropout2 = tf.layers.dropout(
             inputs=pool2,
-            rate=0.1
+            rate=0.2
         )
 
         # print(dropout2.shape)
@@ -67,22 +60,21 @@ def inference(X):
     with tf.name_scope("flatten"):
         flatten = tf.reshape(
             dropout2,
-            shape=[-1, 2*2*64]
+            shape=[-1, 8*8*64]
         )
 
     with tf.name_scope("fully_connected"):
-        fc1 = tf.layers.dense(
+        fc2 = tf.layers.dense(
             inputs=flatten,
-            units=1024,
+            units=512,
             activation=tf.nn.relu
         )
-        fc2 = tf.layers.dense(
-            inputs=fc1,
-            units=192,
-            activation=tf.nn.relu
+        dropout3 = tf.layers.dropout(
+            inputs=fc2,
+            rate=0.3
         )
         logits = tf.layers.dense(
-            inputs=fc2,
+            inputs=dropout3,
             units=10,
             activation=tf.nn.relu
         )
