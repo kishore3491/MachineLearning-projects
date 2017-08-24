@@ -11,3 +11,4 @@
 
 # Limitations:
 1. Fixed size input images: The current model only accepts images of size=[32,32,3]. This is because of the need Flattening and Fully connected layers in the back, which expects a fixed size input. Publications like SPPNet suggest methods to accept variable size images.
+2. Object localization: The CIFAR10 images are mostly preprocessed, and those 32x32 tiny images represent only a single object at a time. Whereas, real world images are contains numerous objects within an image. Object detection and classification approaches like R-CNN, Fast R-CNN, Faster R-CNN could provide better outlook. 
