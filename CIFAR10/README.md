@@ -8,3 +8,6 @@
 2. A typical CNN with Max pooling, RELU activations and Dropouts.
 3. Training pipeline which writes the variables to checkpoint after training.
 4. Evaluation pipeline which reads variables from checkpoint and runs test data batches only once.
+
+# Limitations:
+1. Fixed size input images: The current model only accepts images of size=[32,32,3]. This is because of the need Flattening and Fully connected layers in the back, which expects a fixed size input. Publications like SPPNet suggest methods to accept variable size images.
