@@ -111,20 +111,37 @@ def get_filenames_queue(data_dir, is_train, epochs=1):
     return tf.train.string_input_producer(filenames)
 
 
-def get_data_batch(filename_queue, batch_size, is_train, shuffle=False):
+def get_data_batch(
+        filename_queue,
+        batch_size,
+        is_train,
+        shuffle=False,
+        augmented=False):
     # Step 1: Read examples from files in the filename queue.
     read_input = read_data(filename_queue)
     recasted_image = tf.cast(read_input.uint8image, tf.float32)
 
-    # Step 2: Preprocess image
-    # resized_image = tf.image.resized_image_with_crop_or_pad(
-    #     image=reshaped_image,
-    #     target_height=IMAGE_SIZE,
-    #     target_width=IMAGE_SIZE
-    # )
+    # Step 2: Preprocess image(Optional)
+    if (augmented and is_train):
+          # Randomly crop a [height, width] section of the image.
+          # distorted_image = tf.random_crop(reshaped_image, [height, width, 3])
 
-    # Step 3: Preprocess image 2
-    float_image = tf.image.per_image_standardization(recasted_image)
+          # Randomly flip the image horizontally.
+          distorted_image = tf.image.random_flip_left_right(recasted_image)
+
+          # Because these operations are not commutative, consider randomizing
+          # the order their operation.
+          # NOTE: since per_image_standardization zeros the mean and makes
+          # the stddev unit, this likely has no effect see tensorflow#1458.
+          distorted_image = tf.image.random_brightness(distorted_image,
+                                                       max_delta=63)
+          distorted_image = tf.image.random_contrast(distorted_image,
+                                                     lower=0.2, upper=1.8)
+
+          float_image = tf.image.per_image_standardization(distorted_image)
+    else:
+        # Step 3: Preprocess image 2
+        float_image = tf.image.per_image_standardization(recasted_image)
 
     # Step 4: Set the shapes of tensors.
     float_image.set_shape([IMG_HEIGHT, IMG_WIDTH, 3])

@@ -104,7 +104,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--batch_size", type=int, default=100)
-    parser.add_argument("--ckpt_dir", default="/tmp/tf/CIFAR10/checkpoint")
+    parser.add_argument("--ckpt_dir", default="/home/kbanala/Work/DataScience/Projects-ML-DL/CIFAR10/checkpoints")
     parser.add_argument(
         "--data_dir",
         type=str,

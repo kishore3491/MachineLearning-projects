@@ -47,7 +47,8 @@ def train():
                                         filename_queue,
                                         batch_size=FLAGS.batch_size,
                                         is_train=True,
-                                        shuffle=True)
+                                        shuffle=True,
+                                        augmented=True)
 
     merged = tf.summary.merge_all()
     train_writer = tf.summary.FileWriter(FLAGS.log_dir, tf.get_default_graph())
@@ -140,7 +141,7 @@ if __name__ == '__main__':
     parser.add_argument(
         "--ckpt_dir",
         type=str,
-        default="/tmp/tf/CIFAR10/checkpoint",
+        default="/home/kbanala/Work/DataScience/Projects-ML-DL/CIFAR10/checkpoints",
         help="directory to store checkpoints")
     parser.add_argument(
         "--data_dir",

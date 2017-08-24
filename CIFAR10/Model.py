@@ -41,7 +41,7 @@ def inference(X):
             activation=tf.nn.relu
         )
 
-        # Pooling layer 1
+        # Pooling layer 2
         pool2 = tf.layers.max_pooling2d(
             inputs=conv2,
             pool_size=[2,2],
@@ -53,13 +53,34 @@ def inference(X):
             rate=0.2
         )
 
-        # print(dropout2.shape)
+        conv3 = tf.layers.conv2d(
+            inputs=conv1,
+            filters=64,
+            kernel_size=[3,3],
+            strides=[2,2],
+            padding="SAME",
+            activation=tf.nn.relu
+        )
+
+        # Pooling layer 3
+        pool3 = tf.layers.max_pooling2d(
+            inputs=conv3,
+            pool_size=[2,2],
+            strides=2
+        )
+
+        dropout3 = tf.layers.dropout(
+            inputs=pool3,
+            rate=0.2
+        )
+
+        # print(dropout3.shape)
     #... more conv layers as needed
 
     # To flatten, get prev layer's shape, and convert to new shape [None, x]
     with tf.name_scope("flatten"):
         flatten = tf.reshape(
-            dropout2,
+            dropout3,
             shape=[-1, 8*8*64]
         )
 
